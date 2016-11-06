@@ -1,0 +1,11 @@
+Systemy operacyjne/Pracownia P1
+
+Problem:
+Dwudziestu filozofów siedzi przy stole i każdy wykonuje jedną z dwóch czynności – albo je, albo rozmyśla. 
+Stół jest okrągły, przed każdym z nich znajduje się miska ze spaghetti, a pomiędzy każdą sąsiadującą parą 
+filozofów leży widelec, a więc każda osoba ma przy sobie dwie sztuki - po swojej lewej i prawej stronie. 
+Ponieważ jedzenie potrawy jest trudne przy użyciu jednego widelca, zakłada się, że każdy filozof korzysta 
+z dwóch. Dodatkowo nie ma możliwości skorzystania z widelca, który nie znajduje się bezpośrednio przed 
+daną osobą. 
+
+Rozszerzenie: Zwiększenie liczby postaci i zasobów do 20.
