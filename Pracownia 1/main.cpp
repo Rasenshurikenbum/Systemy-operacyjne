@@ -16,11 +16,15 @@ Rozszerzenie: Zwiększenie liczby postaci i zasobów do 20 + manewry z serwetkam
 #include <thread>
 
 using namespace std;
-
+int __gcd(int a, int b)
+	{
+	if(b==0) return a;
+	if(b>a) return __gcd(b,a);
+	return __gcd(b, a%b);
+}
 int main()
 {
 	cout << "Hello world!\n";
-	cout<< "Es ist doch nur ein Testbild!\n";
-
+	for(int i=0;i<10;++i) cout << __gcd(4,i) << endl;
 	return 0;
 }
