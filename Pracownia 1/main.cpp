@@ -5,6 +5,20 @@
 #include <thread>
 #define N 20
 using namespace std;
+/*
+jak ja bym to widział:
+klasa widelec 
+	- brudny/czysty
+	- mutex
+	- id filozofa trzymajacego go
+
+watki - filozofowie
+	- operacje: poproś, myśl, jedz, wyczysc
+
+potem dorzucimy serwetki podobnie.
+
+
+*/
 void nix(int n)
 	{
 	cout << n << endl;
