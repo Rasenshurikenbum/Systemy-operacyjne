@@ -17,7 +17,7 @@ using namespace std;
 
 sem_t crit_sect;			// sekcja krytyczna
 sem_t fork_in_use[N];		// semafory widelcow
-int cur_owner[N];			// id filozofow posiadaczy
+int cur_owner[N];			// id filozofow posiadaczy N-tego widelca
 
 void start(int phil_id);
 void eat();
@@ -74,11 +74,17 @@ void eat()
 
 void take_fork(int phil_id)
 {
-	sem_wait(&fork_in_use[LEFT]);		// czekam, az widelec bedzie "brudny" (sasiad skonczy jesc); potem zmieniam status widelca na "czysty"
-	cur_owner[LEFT] = phil_id;			// sasiad przekazuje widelec
+	if (cur_owner[LEFT] != phil_id) // jesli filozof nie ma lewego widelca
+	{
+		sem_wait(&fork_in_use[LEFT]);		// czekam, az widelec bedzie "brudny" (sasiad skonczy jesc); potem zmieniam status widelca na "czysty"
+		cur_owner[LEFT] = phil_id;			// sasiad przekazuje widelec
+	}
 
-	sem_wait(&fork_in_use[RIGHT]);		// czekam, az widelec bedzie "brudny" (sasiad skonczy jesc); potem zmieniam status widelca na "czysty"
-	cur_owner[RIGHT] = phil_id;			// sasiad przekazuje widelec
+	else if (cur_owner[RIGHT] != phil_id) // jesli filozof nie ma prawego widelca
+	{
+		sem_wait(&fork_in_use[RIGHT]);		// czekam, az widelec bedzie "brudny" (sasiad skonczy jesc); potem zmieniam status widelca na "czysty"
+		cur_owner[RIGHT] = phil_id;			// sasiad przekazuje widelec
+	}
 }
 
 void put_fork(int phil_id) // tak naprawde nie odklada, tylko zmienia na brudne (ale trzyma dalej u siebie)
