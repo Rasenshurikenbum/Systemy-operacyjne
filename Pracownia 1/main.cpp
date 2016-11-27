@@ -24,7 +24,6 @@ sem_t napkin[BOXES]; 		// 5 semaforow na serwetki
 
 int fork_owner[N];			// nr filozofa posiadającego i-ty widelec
 int fork_state[N];			// stan widelca (<brudny> | <czysty>)
-//bool owns_nap[N];
 int meals_to_go[N];			// ilosc posilkow do zjedzenia i-tego filozofa
 
 void start(int);
@@ -38,37 +37,30 @@ int main()
 {
 	thread philosophers[N];
 	sem_init(&crit_sect, 0, 1);
-
 	for (int i = 0; i < BOXES; i++)
 	{
 		sem_init(&napkin[i], 0, 2); // dwie serwetki dostepne w kazdym pudelku
 	}
-
 	for (int i = 0; i < N; i++)
 	{
 		fork_owner[i] = i % (N - 1);			// wreczenie widelca filozofowi o nizszym id
 		sem_init(&fork_in_use[i], 0, 1);		// tworzenie semaforow widelcow
 		fork_state[i] = DIRTY;					// wszystkie widelce brudne
 		meals_to_go[i] = MEALS;					// przypisanie ilosci posilkow do zjedzenia
-
-		//owns_nap[i] = false;					// nikt nie ma serwetki
 	}
 	for(int i=0;i<N;++i) philosophers[i] = thread(start, i);		// tworzenie watkow
 	for (int i = 0; i < N; i++)
 	{
 		philosophers[i].join();
 	}
-
 	cout << "DONE!" << endl;
 	return 0;
 }
-
 void start(int phil_id)
 {
 	while (meals_to_go[phil_id] != 0)
 	{
 		take_fork(phil_id); // bierzemy widelce
-
 		if (fork_state[LEFT] == CLEAN && fork_state[RIGHT] == CLEAN && fork_owner[LEFT] == phil_id && fork_owner[RIGHT] == phil_id) // kiedy filozof ma 2 czyste widelce
 		{
 			take_napkin(phil_id);		// biore serwetke
@@ -77,7 +69,6 @@ void start(int phil_id)
 		}
 	}
 }
-
 void take_fork(int phil_id)
 {
 	if (fork_owner[LEFT] != phil_id) // jesli filozof nie ma lewego widelca
@@ -86,7 +77,6 @@ void take_fork(int phil_id)
 		fork_owner[LEFT] = phil_id;			// sasiad przekazuje widelec
 		fork_state[LEFT] = CLEAN;			// zmieniam status widelca na "czysty"
 	}
-	
 	if (fork_owner[RIGHT] != phil_id) // jesli filozof nie ma prawego widelca
 	{
 		sem_wait(&fork_in_use[RIGHT]);		// czekam, az widelec bedzie "brudny" (sasiad skonczy jesc); po czekaniu ustawiam czekanie na nastepnego
@@ -94,26 +84,18 @@ void take_fork(int phil_id)
 		fork_state[RIGHT] = CLEAN;			// zmieniam status widelca na "czysty"
 	}
 }
-
 void eat(int phil_id)
 {
-	// symulacja jedzenia
-	usleep(5);
-
+	usleep(5); 	// symulacja jedzenia
 	sem_wait(&crit_sect);	// komunikat
-
 	meals_to_go[phil_id]--;	// zjedzony posilek
 	printf("%2d. filozof zjadl (%d/%d), razem (%d/%d)\n", phil_id, MEALS - meals_to_go[phil_id], MEALS, meals(), N*MEALS);
-
 	sem_post(&crit_sect);	// koniec komunikatu
 }
-
 void take_napkin(int phil_id)
 {
 	sem_wait(&napkin[phil_id / 4]);		// czekam, az serwetka bedzie wolna; po czekaniu ja zabieram
-	//owns_nap[phil_id] = true;			// filozof id ma serwetkę	
 }
-
 void put_all(int phil_id) // tak naprawde nie odklada, tylko zmienia na brudne (ale trzyma dalej u siebie)
 {
 	fork_state[LEFT] = DIRTY;			// lewy widelec jest teraz "brudny"
@@ -122,8 +104,6 @@ void put_all(int phil_id) // tak naprawde nie odklada, tylko zmienia na brudne (
 	sem_post(&fork_in_use[LEFT]);		// odblokowujemy lewy widelec sasiadowi
 	sem_post(&fork_in_use[RIGHT]);		// odblokowujemy prawy widelec sasiadowi
 	sem_post(&napkin[phil_id / 4]);		// odblokowujemy serwetke
-
-	//owns_nap[phil_id]=false; // filozof id nie ma serwetki
 }
 int meals()
 	{
