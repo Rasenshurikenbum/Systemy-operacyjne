@@ -6,9 +6,9 @@
 #include <semaphore.h>
 #include <unistd.h>
 
-#define N 4						// liczba filozofow
-#define MEALS 2						// liczba posilkow do zjedzenia
-#define BOXES 1						// liczba pudelek z serwetkami
+#define N 20						// liczba filozofow
+#define MEALS 100						// liczba posilkow do zjedzenia
+#define BOXES 5						// liczba pudelek z serwetkami
 #define LEFT (phil_id - 1 + N) % N
 #define RIGHT phil_id
 #define DIRTY 0
@@ -32,7 +32,7 @@ void eat(int);
 void take_fork(int);
 void take_napkin(int);
 void put_all(int);
-
+int meals();
 
 int main()
 {
@@ -51,10 +51,9 @@ int main()
 		fork_state[i] = DIRTY;					// wszystkie widelce brudne
 		meals_to_go[i] = MEALS;					// przypisanie ilosci posilkow do zjedzenia
 
-		philosophers[i] = thread(start, i);		// tworzenie watkow
 		//owns_nap[i] = false;					// nikt nie ma serwetki
 	}
-
+	for(int i=0;i<N;++i) philosophers[i] = thread(start, i);		// tworzenie watkow
 	for (int i = 0; i < N; i++)
 	{
 		philosophers[i].join();
@@ -70,8 +69,7 @@ void start(int phil_id)
 	{
 		take_fork(phil_id); // bierzemy widelce
 
-		if (fork_owner[LEFT] == phil_id && fork_owner[RIGHT] == phil_id &&
-			fork_state[LEFT] == CLEAN && fork_state[RIGHT] == CLEAN) // kiedy filozof ma 2 czyste widelce
+		if (fork_state[LEFT] == CLEAN && fork_state[RIGHT] == CLEAN && fork_owner[LEFT] == phil_id && fork_owner[RIGHT] == phil_id) // kiedy filozof ma 2 czyste widelce
 		{
 			take_napkin(phil_id);		// biore serwetke
 			eat(phil_id);				// jem
@@ -100,12 +98,12 @@ void take_fork(int phil_id)
 void eat(int phil_id)
 {
 	// symulacja jedzenia
-	usleep(1);
+	usleep(5);
 
 	sem_wait(&crit_sect);	// komunikat
 
 	meals_to_go[phil_id]--;	// zjedzony posilek
-	printf("%2d. filozof zjadl (%d/%d)\n", phil_id, MEALS - meals_to_go[phil_id], MEALS);
+	printf("%2d. filozof zjadl (%d/%d), razem (%d/%d)\n", phil_id, MEALS - meals_to_go[phil_id], MEALS, meals(), N*MEALS);
 
 	sem_post(&crit_sect);	// koniec komunikatu
 }
@@ -127,3 +125,9 @@ void put_all(int phil_id) // tak naprawde nie odklada, tylko zmienia na brudne (
 
 	//owns_nap[phil_id]=false; // filozof id nie ma serwetki
 }
+int meals()
+	{
+	int ile = N*MEALS;
+	for(int i=0;i<N;++i) ile-=meals_to_go[i];
+	return ile;
+	}
