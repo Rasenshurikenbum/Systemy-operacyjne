@@ -8,6 +8,7 @@
 
 #define N 20
 #define MEALS 10
+#define BOXES 5 // liczba serwetek
 #define LEFT (phil_id - 1 + N) % N
 #define RIGHT phil_id
 #define DIRTY 0
@@ -19,24 +20,29 @@ using namespace std;
 
 sem_t crit_sect;			// sekcja krytyczna
 sem_t fork_in_use[N];		// semafory widelcow
+sem_t napkin[BOXES]; 		// 5 semaforow na serwetki 
 int fork_owner[N];			// nr filozofa posiadającego ity widelec
 int fork_state[N];
+bool owns_nap[N];
 int meals=0;
 void start(int);
 void eat(int,int);
-void take_fork(int);
-void put_fork(int);
+void take_all(int);
+void put_all(int);
+int phil_box(int);
 
 int main()
 {
 	thread philosophers[N];
 	sem_init(&crit_sect, 0, 1);
+	for(int i=0;i<BOXES;++i) sem_init(&napkin[i],0,2); // dwie serwetki dostepne w kazdym pudelku
 	for (int i = 0; i < N; i++)
 	{
 		fork_owner[i] = i % (N - 1);				// wreczenie widelca filozofowi o nizszym id
 		sem_init(&fork_in_use[i], 0, 1);		// tworzenie semaforow
 		philosophers[i] = thread(start, i);		// tworzenie watkow
 		fork_state[i] = DIRTY; // wszystkie widelce brudne
+		owns_nap[i]= false; // nikt nie ma serwetki
 	}
 	for (int i = 0; i < N; i++)
 	{
@@ -57,12 +63,12 @@ void start(int phil_id)
 				put_fork(phil_id);
 				}*/
 		// jak ma dwa brudne, to musi je oddac
-		take_fork(phil_id); // bierzemy widelce
+		take_all(phil_id); // bierzemy widelce
 		if(fork_state[LEFT]+fork_state[RIGHT] == 2*CLEAN) // jemy, ale tylko czystymi
 			{
 			eat(phil_id,i); 
 			fork_state[LEFT]=fork_state[RIGHT] = DIRTY;
-			put_fork(phil_id); // oddajemy widelce
+			put_all(phil_id); // oddajemy widelce
 			}
 		else 
 			{
@@ -86,7 +92,7 @@ void eat(int id, int i)
 	usleep(1);
 }
 
-void take_fork(int phil_id)
+void take_all(int phil_id)
 {
 	if (fork_owner[LEFT] != phil_id) // jesli filozof nie ma lewego widelca
 	{
@@ -106,10 +112,21 @@ void take_fork(int phil_id)
 	//	sem_post(&crit_sect);
 				// sasiad przekazuje widelec
 	}
+	// jeszcze wziac serwetke
+	else if (owns_nap[phil_id])
+		{
+		sem_wait(&napkin[phil_box(phil_id)]);	
+		owns_nap[phil_id]=true;	// filozof id ma serwetkę	
+		}
 }
-
-void put_fork(int phil_id) // tak naprawde nie odklada, tylko zmienia na brudne (ale trzyma dalej u siebie)
+void put_all(int phil_id) // tak naprawde nie odklada, tylko zmienia na brudne (ale trzyma dalej u siebie)
 {
 	sem_post(&fork_in_use[LEFT]);
 	sem_post(&fork_in_use[RIGHT]);
+	sem_post(&napkin[phil_box(phil_id)]);
+	owns_nap[phil_id]=false; // filozof id nie ma serwetki
 }
+int phil_box(int id) // funkcja zwracajaca dla id filozofa nr pudelka, do ktorego ma dostep
+	{
+	return id/4;
+	}
