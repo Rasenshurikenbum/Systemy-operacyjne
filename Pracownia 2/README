@@ -1,2 +1,22 @@
 Problem:
 Implementacja biblioteki do obsługi wątków z użyciem ucontext.
+
+Resources:
+
+http://nitish712.blogspot.com/2012/10/thread-library-using-context-switching.html
+
+http://www.evanjones.ca/software/threading.html
+
+"""Tak, jak najbardziej proszę korzystać z całej biblioteki standardowej i
+konstrukcji C++'owych dostępnych w nowszych standardach tego języka.
+
+Odnośnie mniej-lub-bardziej standardowych bibliotek C++: Jeśli czujecie
+się wystarczająco biegli w C++ to możecie korzystać z wrappera
+Boost.Context zamiast ucontext. Jeśli jednak byłoby to Wasze pierwsze
+użycie Boosta to proponuję pozostać przy C'owym ucontext.
+
+On 30.11.2016 19:50, Piotr Gdowski wrote:
+> Dobry wieczór,
+> Czy w czasie pisania P2 możemy korzystać z STLa? Głównie chodzi o klasy queue i vector.
+> Pozdrawiam,
+> Piotr Gdowski"""
