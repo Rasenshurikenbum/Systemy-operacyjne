@@ -1,0 +1,101 @@
+2 Thread library interface
+
+This section describes the interface to the thread library for this project.
+You will write a multi-threaded program that uses this interface, and you will
+also write your own implementation of this interface.
+
+int thread_libinit(thread_startfunc_t func, void *arg)
+
+    thread_libinit initializes the thread library.  A user program should call
+    thread_libinit exactly once (before calling any other thread functions).
+    thread_libinit creates and runs the first thread.  This first thread is
+    initialized to call the function pointed to by func with the single
+    argument arg.  Note that a successful call to thread_libinit will not
+    return to the calling function.  Instead, control transfers to func, and
+    the function that calls thread_libinit will never execute again.
+    
+int thread_create(thread_startfunc_t func, void *arg)
+
+    thread_create is used to create a new thread.  When the newly created
+    thread starts, it will call the function pointed to by func and pass it the
+    single argument arg.
+
+int thread_yield(void)
+
+    thread_yield causes the current thread to yield the CPU to the next
+    runnable thread.  It has no effect if there are no other runnable threads.
+
+int thread_lock(unsigned int lock)
+int thread_unlock(unsigned int lock)
+int thread_wait(unsigned int lock, unsigned int cond)
+int thread_signal(unsigned int lock, unsigned int cond)
+int thread_broadcast(unsigned int lock, unsigned int cond)
+
+    thread_lock, thread_unlock, thread_wait, thread_signal, and
+    thread_broadcast implement Mesa monitors in your thread library.  We will
+    cover the semantics of Mesa monitors in lecture.
+
+    A lock is identified by an unsigned integer (0 - 0xffffffff).  Each lock
+    has a set of condition variables associated with it (numbered 0 -
+    0xffffffff), so a condition variable is identified uniquely by the tuple
+    (lock number, cond number).  Programs can use arbitrary numbers for locks
+    and condition variables (i.e., they need not be numbered from 0 - n).
+
+Each of these functions returns -1 on failure.  Each of these functions
+returns 0 on success, except for thread_libinit, which does not return
+at all on success.
+    
+Here is the file "thread.h".  DO NOT MODIFY OR RENAME IT.  thread.h will be
+included by programs that use the thread library, and should also be included
+by your library implementation.
+
+-------------------------------------------------------------------------------
+/*
+ * thread.h -- public interface to thread library
+ *
+ * This file should be included in both the thread library and application
+ * programs that use the thread library.
+ */
+#ifndef _THREAD_H
+#define _THREAD_H
+
+#define STACK_SIZE 262144	/* size of each thread's stack */
+
+typedef void (*thread_startfunc_t) (void *);
+
+extern int thread_libinit(thread_startfunc_t func, void *arg);
+extern int thread_create(thread_startfunc_t func, void *arg);
+extern int thread_yield(void);
+extern int thread_lock(unsigned int lock);
+extern int thread_unlock(unsigned int lock);
+extern int thread_wait(unsigned int lock, unsigned int cond);
+extern int thread_signal(unsigned int lock, unsigned int cond);
+extern int thread_broadcast(unsigned int lock, unsigned int cond);
+
+/*
+ * start_preemptions() can be used in testing to configure the generation
+ * of interrupts (which in turn lead to preemptions).
+ *
+ * The sync and async parameters allow several styles of preemptions:
+ *
+ *     1. async = true: generate asynchronous preemptions every 10 ms using
+ *        SIGALRM.  These are non-deterministic.
+ *
+ *     2. sync = true: generate synchronous, pseudo-random preemptions before
+ *        interrupt_disable and after interrupt_enable.  You can generate
+ *        different (but deterministic) preemption patterns by changing
+ *        random_seed.
+ *
+ * start_preemptions() should be called (at most once) in the application
+ * function started by thread_libinit().  Make sure this is after the thread
+ * system is done being initialized.
+ *
+ * If start_preemptions() is not called, no interrupts will be generated.
+ *
+ * The code for start_preemptions is in interrupt.cc, but the declaration
+ * is in thread.h because it's part of the public thread interface.
+ */
+extern void start_preemptions(bool async, bool sync, int random_seed);
+
+#endif /* _THREAD_H */
+-------------------------------------------------------------------------------
