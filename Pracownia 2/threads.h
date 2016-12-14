@@ -1,4 +1,4 @@
 #include <iostream>
+#include <functional>
 using namespace std;
 
-string hello_world();

@@ -1,7 +1,22 @@
 #include <iostream>
+#include <functional>
 #include "threads.h"
+#include <queue>
 using namespace std;
-string hello_world()
+template <typename func_type, typename args_type> class thread
 {
-	return "Hello World\n";
-}
+	public:
+	function<func_type (args_type...)> func;
+	va_list arg_list;
+	thread(function <func_type (args_type...)> f_in, args_type Args... )
+		{
+		func = f_in;
+		arg_list = Args;
+		}
+ 	/*run() 
+		{
+		return func(arg_list);
+		}*/
+};
+//queue <thread> Q;
+
