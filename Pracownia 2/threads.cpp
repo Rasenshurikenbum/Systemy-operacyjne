@@ -1,7 +1,6 @@
 #include <iostream>
 #include <functional>
 #include "threads.h"
-#include <queue>
 using namespace std;
 template <typename func_type, typename args_type> class thread
 {
@@ -13,10 +12,6 @@ template <typename func_type, typename args_type> class thread
 		func = f_in;
 		arg_list = Args;
 		}
- 	/*run() 
-		{
-		return func(arg_list);
-		}*/
 };
-//queue <thread> Q;
+
 
