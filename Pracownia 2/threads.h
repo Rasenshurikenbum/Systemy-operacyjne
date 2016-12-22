@@ -1,4 +1,5 @@
 #include <iostream>
+#include <ucontext.h>
 using namespace std;
 /*
  * thread.h -- public interface to thread library
@@ -11,11 +12,12 @@ using namespace std;
 
 #define STACK_SIZE 262144	/* size of each thread's stack */
 
-typedef void (*thread_startfunc_t) (void *);
+typedef void (*thread_startfunc_t) ();
 
 extern int thread_libinit(thread_startfunc_t func, void *arg);
 extern int thread_create(thread_startfunc_t func, void *arg);
-extern int thread_yield(void);
+//extern int thread_yield(void);
+extern int thread_yield(ucontext_t t);
 extern int thread_lock(unsigned int lock);
 extern int thread_unlock(unsigned int lock);
 extern int thread_wait(unsigned int lock, unsigned int cond);
