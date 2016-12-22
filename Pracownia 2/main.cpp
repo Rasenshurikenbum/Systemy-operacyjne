@@ -1,10 +1,7 @@
 #include <iostream>
-#include "threads.cpp"
-#include <functional>
+#include "threads.h"
 using namespace std;
-void print(int x) {cout << x; }
-
 int main()
 {
-	thread x = thread<void,int>(print, 4);
+	
 }

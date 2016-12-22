@@ -1,5 +1,4 @@
 #include <iostream>
-#include <functional>
 using namespace std;
 /*
  * thread.h -- public interface to thread library
@@ -10,7 +9,7 @@ using namespace std;
 #ifndef _THREAD_H
 #define _THREAD_H
 
-constexpr STACK_SIZE 262144	/* size of each thread's stack */
+#define STACK_SIZE 262144	/* size of each thread's stack */
 
 typedef void (*thread_startfunc_t) (void *);
 
