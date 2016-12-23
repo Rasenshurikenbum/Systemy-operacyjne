@@ -9,15 +9,19 @@ struct props
 	{
 		queue <ucontext_t *> Q;
 		bool initializated = false;
+		ucontext_t* current_cntxt;
 	} sth;
-ucontext_t* A;
 ucontext_t* make_thread(thread_startfunc_t f, void *arg)
 	{
+		ucontext_t* A = NULL;
+		cout<< "here\n";
 		getcontext(A); // nowy kontekst
+		cout<< "here\n";
 		char *stack=new char[STACK_SIZE]; 
 		A->uc_stack.ss_sp=stack;
 		A->uc_stack.ss_size=STACK_SIZE;
 		A->uc_stack.ss_flags=0;
+		cout<< "here\n";
 		makecontext(A,f,0); // na razie 0, trzeba zrobic tak, by sie dalo przekazac wiecej argumentow
 		return A;
 	}
@@ -27,27 +31,34 @@ int thread_libinit(thread_startfunc_t func, void *arg)
 	if(sth.initializated) return -1; // error, lib is initializated
 	sth.initializated = true;
 	ucontext_t* thread = make_thread(func, arg);
-	//sth.Q.push(thread);
-	return thread_yield(thread);
+	cout<< "here\n";
+	sth.current_cntxt = thread;
+	sth.Q.push(thread);
+	cout<< "here\n";
+	return 0;//thread_yield();
 	}
 int thread_create(thread_startfunc_t func, void *arg)
 	{
 	ucontext_t* thread = make_thread(func, arg);
 	sth.Q.push(thread);	
+	//thread_yield();
 	return 0;
 	}
-int thread_yield(ucontext_t* current)
+int thread_yield()
 	{
-	sth.Q.push(current);
-	if(sth.Q.empty()) 
+	cout<< "here\n";
+	sth.Q.push(sth.current_cntxt);
+	/*if(sth.Q.empty()) // does it make sense?
 		{
 		cout<< "empty q" << endl;
-		exit(0);
+		sth.current_cntxt = NULL;
+		exit(0); // nothing to do
 		return 0;
-		}	
+		}*/	
 	ucontext_t* next = sth.Q.front();
 	sth.Q.pop();
-	swapcontext(current, next);
+	swapcontext(sth.current_cntxt, next);
+	cout<< "here\n";
 	return 0;
 	}
 int thread_lock(unsigned int lock)
