@@ -5,10 +5,23 @@
 using namespace std;
 typedef void (*thread_startfunc_t)();
 #define STACK_SIZE 262144 /* size of each thread's stack */
-queue <ucontext_t *> Q;
-ucontext_t* current_cntxt;
-bool initializated = false;
+
+struct Thread {
+	ucontext_t * cntxt;
+	bool finished;
+	unsigned int semaphore;
+};
+queue <Thread*> Q;
+ucontext_t* previous;
+Thread * current;
+//bool initializated = false;
 //================my funcs====================================
+int start(thread_startfunc_t func, void *arg)
+	{
+	func();
+	return 0;
+	}
+/*
 ucontext_t* make_thread(ucontext_t* A, thread_startfunc_t f, void *arg)
 	{
 		getcontext(A); // nowy kontekst
@@ -21,13 +34,28 @@ ucontext_t* make_thread(ucontext_t* A, thread_startfunc_t f, void *arg)
 		Q.push(A);
 		return A; 
 	}
+	*/	
 //=================interface functions=======================
 int thread_libinit(thread_startfunc_t func, void *arg)
 	{
+	Thread* first = new Thread;
+	first->finished = false;
+	first->cntxt = new ucontext_t;
+	getcontext(first->cntxt);
+	first->cntxt->uc_stack.ss_sp = new char[STACK_SIZE];
+	first->cntxt->uc_stack.ss_size = STACK_SIZE;
+	first->cntxt->uc_stack.ss_flags = 0;
+	first->cntxt->uc_link=NULL;
+	makecontext(first->cntxt, (void (*)()) start, 2, func, arg);
+	Q.push(first);
+	
+	return 0;
+	}
+	/*
 	if(initializated) return -1; // error, lib is initializated
 	initializated = true;
 	ucontext_t* thread = make_thread(new ucontext_t, func, arg);
-	current_cntxt = thread;
+	cntxt_cntxt = thread;
 	cout << thread << "0\n";
 	setcontext(thread); // call exactly once
 	return thread_yield();
@@ -80,3 +108,4 @@ void start_preemptions(bool async, bool sync, int random_seed)
 
 	}
 
+*/
