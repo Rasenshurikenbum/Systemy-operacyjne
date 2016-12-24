@@ -3,18 +3,22 @@
 using namespace std;
 void print()
 {
-    cout << 3;
-    //thread_yield();
-    cout << 5;
+    for(int i=0;i<10;++i)
+    {
+        cout << 2*i << endl;
+        thread_yield();
+    }
 }
 void print2()
+{
+    for(int i=0;i<10;++i)
     {
-    cout << 4;
-    thread_yield();
-    cout << 6;
+        cout << 5*i << endl;
+        thread_yield();
     }
+}
 int main()
 {
     thread_libinit(print,NULL);
-    //thread_create(print2, NULL);
+    thread_create(print2, NULL);
 }

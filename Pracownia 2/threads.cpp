@@ -4,54 +4,45 @@
 #include <ucontext.h>
 using namespace std;
 typedef void (*thread_startfunc_t)();
-#define STACK_SIZE 262144	/* size of each thread's stack */
-struct props 
+#define STACK_SIZE 262144 /* size of each thread's stack */
+queue <ucontext_t *> Q;
+ucontext_t* current_cntxt;
+bool initializated = false;
+//================my funcs====================================
+ucontext_t* make_thread(ucontext_t* A, thread_startfunc_t f, void *arg)
 	{
-		queue <ucontext_t *> Q;
-		bool initializated = false;
-		ucontext_t* current_cntxt;
-	} sth;
-ucontext_t* make_thread(thread_startfunc_t f, void *arg)
-	{
-		ucontext_t* A = new ucontext_t;
 		getcontext(A); // nowy kontekst
 		char *stack=new char[STACK_SIZE]; 
 		A->uc_stack.ss_sp=stack;
 		A->uc_stack.ss_size=STACK_SIZE;
 		A->uc_stack.ss_flags=0;
-		makecontext(A,f,0); // na razie 0, trzeba zrobic tak, by sie dalo przekazac wiecej argumentow
-		return A;
+		makecontext(A,f,0);
+		return A; 
 	}
 //==============interface functions=======================
 int thread_libinit(thread_startfunc_t func, void *arg)
 	{
-	if(sth.initializated) return -1; // error, lib is initializated
-	sth.initializated = true;
-	ucontext_t* thread = make_thread(func, arg);
-	sth.current_cntxt = thread;
-	sth.Q.push(thread);
-	return thread_yield();
+	if(initializated) return -1; // error, lib is initializated
+	initializated = true;
+	ucontext_t* thread = make_thread(new ucontext_t, func, arg);
+	current_cntxt = thread;
+	setcontext(thread); // call exactly once
+	return 0;
 	}
 int thread_create(thread_startfunc_t func, void *arg)
 	{
-	ucontext_t* thread = make_thread(func, arg);
-	sth.Q.push(thread);	
-	//thread_yield();
+	ucontext_t* thread = make_thread(new ucontext_t, func, arg);
+	cout << thread << "\n";
 	return 0;
 	}
 int thread_yield()
 	{
-	sth.Q.push(sth.current_cntxt);
-	/*if(sth.Q.empty()) // does it make sense?
-		{
-		cout<< "empty q" << endl;
-		sth.current_cntxt = NULL;
-		exit(0); // nothing to do
-		return 0;
-		}*/	
-	ucontext_t* next = sth.Q.front();
-	sth.Q.pop();
-	swapcontext(sth.current_cntxt, next);
+	cout << Q.size() << "\t" << current_cntxt << endl;
+	Q.push(current_cntxt);
+	ucontext_t* next = Q.front();
+	current_cntxt = next;
+	Q.pop();
+	swapcontext(current_cntxt,next);
 	return 0;
 	}
 int thread_lock(unsigned int lock)
