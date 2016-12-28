@@ -24,6 +24,8 @@ int main()
     int x = 3;
     void* k = &x;
     thread_libinit(print, k);
-    thread_create(print2, k);
+    //thread_create(print2, k);
+    //thread_create(print, k);
+    //thread_create(print2, k);
     thread_yield();
 }
