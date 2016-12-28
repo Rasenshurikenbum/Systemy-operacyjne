@@ -3,98 +3,87 @@
 #include <ucontext.h>
 #include "threads.h"
 using namespace std;
-//typedef void (*thread_startfunc_t)(*void);
-//#define STACK_SIZE 262144 /* size of each thread's stack */
-
 struct Thread {
 	ucontext_t * cntxt;
 	bool finished;
 	unsigned int semaphore;
 };
 queue <Thread*> Q;
-ucontext_t* previous;
+Thread * previous;
 Thread * current;
-//bool initializated = false;
+bool initialized = false;
 //================my funcs====================================
 int start(thread_startfunc_t func, void *arg)
 	{
 	func(arg);
-	return 0;
 	current -> finished = true;
+	cout << "end" << endl;
+	return 0;
 	}
-/*
-ucontext_t* make_thread(ucontext_t* A, thread_startfunc_t f, void *arg)
+Thread* new_thread(Thread* t, thread_startfunc_t func, void *arg)
 	{
-		getcontext(A); // nowy kontekst
-		char *stack=new char[STACK_SIZE]; 
-		A->uc_stack.ss_sp=stack;
-		A->uc_stack.ss_size=STACK_SIZE;
-		A->uc_stack.ss_flags=0;
-		A->uc_link=NULL;
-		makecontext(A,f,0);
-		Q.push(A);
-		return A; 
+	t->finished = false;
+	t->cntxt = new ucontext_t;
+	getcontext(t->cntxt);
+	t->cntxt->uc_stack.ss_sp = new char[STACK_SIZE];
+	t->cntxt->uc_stack.ss_size = STACK_SIZE;
+	t->cntxt->uc_stack.ss_flags = 0;
+	t->cntxt->uc_link=NULL;
+	makecontext(t->cntxt, (void (*)()) start, 2, func, arg);
+	Q.push(t);
+	return t;
 	}
-	*/	
+int thread_yield(Thread* now)
+	{
+	// cout << current->cntxt << endl;
+	if(now->finished && Q.empty())
+		{
+		cout << "fin"; 
+		return 0;
+		}
+	if(now->finished)
+		{
+		current = Q.front();
+		Q.pop();
+		setcontext(current->cntxt);
+		exit(0);
+		}
+	if(Q.empty()) return 0; // single thread running
+	Q.push(now);
+	Thread* next = Q.front();
+	Q.pop();
+	//cout << "kupka" << endl;
+	swapcontext(now->cntxt, next->cntxt);
+	//cout << "kupka" << endl;
+	//current = next;
+	//cout << Q.size();
+	return 0;
+	
+	}
 //=================interface functions=======================
 int thread_libinit(thread_startfunc_t func, void *arg)
 	{
-	Thread* first = new Thread;
-	first->finished = false;
-	first->cntxt = new ucontext_t;
-	getcontext(first->cntxt);
-	first->cntxt->uc_stack.ss_sp = new char[STACK_SIZE];
-	first->cntxt->uc_stack.ss_size = STACK_SIZE;
-	first->cntxt->uc_stack.ss_flags = 0;
-	first->cntxt->uc_link=NULL;
-	makecontext(first->cntxt, (void (*)()) start, 2, func, arg);
-	Q.push(first);
+	Thread* first = new_thread(new Thread, func, arg);
 	current = first;
-	setcontext(first->cntxt);
+	previous = NULL;
+	cout << "master " << first->cntxt << endl;
 	return 0;
 	}
-	/*
-	if(initializated) return -1; // error, lib is initializated
-	initializated = true;
-	ucontext_t* thread = make_thread(new ucontext_t, func, arg);
-	cntxt_cntxt = thread;
-	cout << thread << "0\n";
-	setcontext(thread); // call exactly once
-	return thread_yield();
-	}
-*/int thread_create(thread_startfunc_t func, void *arg)
+int thread_create(thread_startfunc_t func, void *arg)
 	{
-	Thread* next = new Thread;
-	next->finished = false;
-	next->cntxt = new ucontext_t;
-	getcontext(next->cntxt);
-	next->cntxt->uc_stack.ss_sp = new char[STACK_SIZE];
-	next->cntxt->uc_stack.ss_size = STACK_SIZE;
-	next->cntxt->uc_stack.ss_flags = 0;
-	next->cntxt->uc_link=NULL;
-	makecontext(next->cntxt, (void (*)()) start, 2, func, arg);
-	Q.push(next);
+	Thread* next = new_thread(new Thread, func, arg);
+	cout << "slave " << next->cntxt << endl;
 	return 0;
 	}
 
 int thread_yield()
 	{
-	/*cout << Q.size() << "\t" << current_cntxt << endl;
-	Q.push(current_cntxt);
-	ucontext_t* next = Q.front();
-	swapcontext(current_cntxt,next);
-	cout << Q.size() << "\t" << current_cntxt << endl;
-	Q.pop();
-	current_cntxt = next;*/
-	cout << Q.front()->cntxt << endl;
-	if(Q.empty()) return 0;
-	if(!current->finished) Q.push(current);
-	Thread* next = Q.front();
-	Q.pop();
-	//current = next;
-	swapcontext(current->cntxt, next->cntxt);
-	cout << Q.size();
-	return 0;
+	if(!initialized) // pierwsze uruchomienie całej maszyny
+		{
+		initialized=true; 
+		setcontext(current->cntxt);
+		}
+	return thread_yield(current);
 	}/*
 int thread_lock(unsigned int lock)
 	{
