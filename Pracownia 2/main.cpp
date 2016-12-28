@@ -1,26 +1,29 @@
 #include <iostream>
 #include "threads.h"
 using namespace std;
-void print()
+void print(void * arg)
 {
+    int k = *(int*)arg;
     for(int i=0;i<4;++i)
     {
-        cout << 2*i << endl;
-     //   thread_yield();
+        cout << 2*i+k << endl;
+        thread_yield();
     }
 }
-void print2()
+void print2(void* arg)
 {
+    int k = *(int*)arg;
     for(int i=0;i<4;++i)
     {
-        cout << 5*i << endl;
-//        thread_yield();
+        cout << 5*i+k << endl;
+        thread_yield();
     }
 }
 int main()
 {
-    thread_libinit(print, NULL);
+    int x = 3;
+    void* k = &x;
+    thread_libinit(print, k);
  //   thread_create(print2, NULL);
-cout << "dsmfmfhkmgfkhmgfh\n";
-	
+    
 }
