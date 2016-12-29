@@ -8,11 +8,11 @@ struct Thread {
 	bool finished;
 	unsigned int semaphore;
 };
-queue <Thread*> Q;
-Thread * head; // główny wątek, czeka na wszystkie inne
-Thread * current;
-Thread * previous;
-bool initialized = false;
+queue <Thread*> Q; // q with all threads
+Thread * head; // main thread, added to q at the end
+Thread * current; // pointer to currently running thread
+Thread * previous; // 'ghost' thread, helps keeping clean while swithcing context
+bool initialized = false; 
 //================my funcs====================================
 void yield(void* k)
 	{
@@ -20,51 +20,11 @@ void yield(void* k)
 	}
 int start(thread_startfunc_t func, void *arg)
 	{
-	func(arg);
+	func(arg); // do my func
 	current->finished = true;
-	//cout << "ended: " << current->cntxt << endl;
-	return thread_yield();
+	return thread_yield(); // go back and run another threaf
 	}
-int thread_yield(Thread* now) // now to wskaźnik na obecny wątek
-	{
-	//int a;
-	//cin>> a;
-	//cout << current << "\t" << now << endl;
-	//cout << current->cntxt  << " " << Q.front()->cntxt << " " << current->finished<< " " << Q.size() << endl;
-	if(now == previous && !Q.empty())
-		{
-		Thread* next = Q.front();  // next wskazuje na nastepny watek
-		Q.pop();
-		current = next;
-		setcontext(current->cntxt);
-		return 0;
-		}
-	if(now->finished && Q.empty())
-		{
-		cout << "fin" << endl;
-		exit(0);
-		return 0;
-		}
-	else if(now->finished) // jesli obecny skonczyl dzialac
-		{
-		//cout << "has been: "<< current->cntxt << endl;
-		current = Q.front(); // niech current wskazuje na nastepny watek
-		Q.pop();
-		//cout << "gonna be: "<< current->cntxt << endl;
-		setcontext(current->cntxt);
-		return 0;
-		}
-	Q.push(now);
-	//Thread* next = Q.front();  // next wskazuje na nastepny watek
-	//Q.pop();
-	//getcontext(current->cntxt);
-	//current = next;
-	//setcontext(current->cntxt);
-	swapcontext(current->cntxt, previous->cntxt);
-	//cout << "current: "<< current->cntxt << endl;
-	return 0;
-	}
-Thread* new_thread(Thread* t, thread_startfunc_t func, void *arg)
+Thread* new_thread(Thread* t, thread_startfunc_t func, void *arg) // return new Thread with initialized all properties (stack, context etc)
 	{
 	t->finished = false;
 	t->cntxt = new ucontext_t;
@@ -73,36 +33,57 @@ Thread* new_thread(Thread* t, thread_startfunc_t func, void *arg)
 	t->cntxt->uc_stack.ss_size = STACK_SIZE;
 	t->cntxt->uc_stack.ss_flags = 0;
 	t->cntxt->uc_link=NULL;
-	makecontext(t->cntxt, (void (*)()) start, 2, func, arg);
+	makecontext(t->cntxt, (void (*)()) start, 2, func, arg); // start is our running function
 	return t;
 	}
 //=================interface functions=======================
 int thread_libinit(thread_startfunc_t func, void *arg)
 	{
-	Thread* first = new_thread(new Thread, func, arg);
-	previous = new_thread(new Thread, yield, (void*)(new int));
-	head = first;
-	cout << "master " << first->cntxt << endl;
+	head = new_thread(new Thread, func, arg); // main thread
+	previous = new_thread(new Thread, yield, (void*)(new int));// yield() just call thread_yield(), argument is never used
 	return 0;
 	}
 int thread_create(thread_startfunc_t func, void *arg)
 	{
 	Thread* next = new_thread(new Thread, func, arg);
-	cout << "slave " << next->cntxt << endl;
 	Q.push(next);
 	return 0;
 	}
 int thread_yield()
 	{
-	if(!initialized) // pierwsze uruchomienie całej maszyny
-		{
-		initialized=true; 
+	if(!initialized) 
+		{ // initializing and setting up q of threads
+		initialized=true; // only once
 		Q.push(head);
 		current = Q.front();
 		Q.pop();
 		setcontext(current->cntxt);
+		return 0;// well, it shouldn't go further
 		}
-	return thread_yield(current);
+	if(current == previous && !Q.empty()) 
+		{// if 'previous' was running, we need to push next thread from q
+		Thread* next = Q.front();  
+		Q.pop();
+		current = next;
+		setcontext(current->cntxt);// without saving 'previous' context
+		return 0;
+		}
+	if(current->finished && Q.empty()) // after all threads we get here
+		{
+		cout << "fin" << endl;
+		exit(0);
+		return 0;
+		}
+	else if(current->finished) // just one of our threads ended working
+		{
+		current = Q.front(); 
+		Q.pop(); // take next, set him to run
+		setcontext(current->cntxt);
+		return 0;
+		}
+	Q.push(current); // when current thread didn't end work, push it to q and call previous
+	swapcontext(current->cntxt, previous->cntxt);//saving current context
+	return 0;
 	}
 /*
 int thread_lock(unsigned int lock)
@@ -134,5 +115,4 @@ void start_preemptions(bool async, bool sync, int random_seed)
 	{
 
 	}
-
 */
