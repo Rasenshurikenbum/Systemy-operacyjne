@@ -182,7 +182,7 @@ extern int dthreads_semdown(unsigned int sem)
             	}
 
 	            current->semID = sem;
-	            blockedThreads.push_back(currentThread);
+	            blockedThreads.push_back(current);
         	}
         	else
         	{
@@ -192,6 +192,6 @@ extern int dthreads_semdown(unsigned int sem)
     		return 0;
     	}
 	}
-	
+
     return -1;
 }
