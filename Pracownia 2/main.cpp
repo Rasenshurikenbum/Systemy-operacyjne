@@ -7,7 +7,7 @@ void print(void * arg)
 {
     int k = *(int*)arg;
 
-    //thread_mutinit(1);
+    thread_mutinit(1);
     thread_mutdown(1);
     //thread_seminit(1, 2);
     //thread_semdown(1);

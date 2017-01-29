@@ -114,7 +114,7 @@ extern int thread_seminit(unsigned int sem, unsigned int value)
 {
     if (semMap.find(sem) == semMap.end()) // if semaphore isn't already initialized
     {
-        Semaphore *currentSemaphore;
+        Semaphore *currentSemaphore = new Semaphore;
         currentSemaphore->semID = sem;
     	currentSemaphore->semValue = value;
 
@@ -211,7 +211,7 @@ extern int thread_mutinit(unsigned int mut)
 {
 	if (mutMap.find(mut) == mutMap.end()) // if mutex isn't already initialized
     {
-        Mutex *currentMutex;
+        Mutex *currentMutex = new Mutex;
         currentMutex->mutID = mut;
     	currentMutex->blockingThread = NULL;
 
@@ -266,31 +266,26 @@ extern int thread_mutup(unsigned int mut)
 {
 	if (mutMap.find(mut) != mutMap.end()) // if mutex is already initialized
     {
-    	if (mutMap.at(mut)->blockingThread == NULL)
-    	{
-    		// trying to reset mutex that wasn't even set
+        deque<Thread*>::iterator it = blockedThreads.begin();
+        while (it != blockedThreads.end()) // iterate through blockedThreads (move the FIRST FOUND thread from blockedThreads with the same mutID to activeThreads)
+        {
+        	if ((*it)->mutID == mut) // if thread from blockedThreads has the same mutID
+        	{
+                (*it)->mutID = 9999;			// assign a start-position mutID
+
+                activeThreads.push_back(*it);	// add that thread to activeThreads
+                it = blockedThreads.erase(it);	// remove that thread from blockedThreads
+            	break;							// thread found, end of the loop
+        	}
+        	else // if not then continue iterating
+        	{
+            	++it;
+			}  
     	}
-    	else if (mutMap.at(mut)->blockingThread == current) // if the current thread is the one that blocked the mutex
+
+		if (mutMap.at(mut)->blockingThread == current) // if the current thread is the one that blocked the mutex
     	{
     		mutMap.at(mut)->blockingThread = NULL;
-
-
-	        deque<Thread*>::iterator it = blockedThreads.begin();
-	        while (it != blockedThreads.end()) // iterate through blockedThreads (move the FIRST FOUND thread from blockedThreads with the same mutID to activeThreads)
-	        {
-	        	if ((*it)->mutID == mut) // if thread from blockedThreads has the same mutID
-	        	{
-	                (*it)->mutID = 9999;			// assign a start-position mutID
-
-	                activeThreads.push_back(*it);	// add that thread to activeThreads
-	                it = blockedThreads.erase(it);	// remove that thread from blockedThreads
-	            	break;							// thread found, end of the loop
-	        	}
-	        	else // if not then continue iterating
-	        	{
-	            	++it;
-				}  
-	    	}
 	    }
 	    else
 	    {
