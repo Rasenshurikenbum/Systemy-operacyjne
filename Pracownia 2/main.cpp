@@ -1,11 +1,13 @@
 #include <iostream>
 #include "threads.h"
+
 using namespace std;
+
 void print(void * arg)
 {
     int k = *(int*)arg;
 
-    thread_mutinit(1);
+    //thread_mutinit(1);
     thread_mutdown(1);
     //thread_seminit(1, 2);
     //thread_semdown(1);
@@ -22,6 +24,7 @@ void print(void * arg)
 
     cout << "koniec blokowania 1\n";
 }
+
 void print2(void* arg)
 {
     int k = *(int*)arg;
@@ -43,6 +46,7 @@ void print2(void* arg)
 
     cout << "koniec blokowania 2\n";
 }
+
 int main()
 {
     int x = 3;

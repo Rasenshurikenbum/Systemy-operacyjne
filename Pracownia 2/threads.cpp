@@ -266,7 +266,11 @@ extern int thread_mutup(unsigned int mut)
 {
 	if (mutMap.find(mut) != mutMap.end()) // if mutex is already initialized
     {
-    	if (mutMap.at(mut)->blockingThread == current) // if the current thread is the one that blocked the mutex
+    	if (mutMap.at(mut)->blockingThread == NULL)
+    	{
+    		// trying to reset mutex that wasn't even set
+    	}
+    	else if (mutMap.at(mut)->blockingThread == current) // if the current thread is the one that blocked the mutex
     	{
     		mutMap.at(mut)->blockingThread = NULL;
 
