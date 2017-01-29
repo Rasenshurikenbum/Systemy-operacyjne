@@ -11,13 +11,8 @@ struct Thread {
 queue <Thread*> Q; // q with all threads
 Thread * head; // main thread, added to q at the end
 Thread * current; // pointer to currently running thread
-Thread * previous; // 'ghost' thread, helps keeping clean while swithcing context
 bool initialized = false; 
 //================my funcs====================================
-void yield(void* k)
-	{
-	current = previous;
-	}
 int start(thread_startfunc_t func, void *arg)
 	{
 	func(arg); // do my func
@@ -40,7 +35,6 @@ Thread* new_thread(Thread* t, thread_startfunc_t func, void *arg) // return new 
 int thread_libinit(thread_startfunc_t func, void *arg)
 	{
 	head = new_thread(new Thread, func, arg); // main thread
-	previous = new_thread(new Thread, yield, (void*)(new int));// yield() just call thread_yield(), argument is never used
 	return 0;
 	}
 int thread_create(thread_startfunc_t func, void *arg)
@@ -60,14 +54,6 @@ int thread_yield()
 		setcontext(current->cntxt);
 		return 0;// well, it shouldn't go further
 		}
-	if(current == previous && !Q.empty()) 
-		{// if 'previous' was running, we need to push next thread from q
-		Thread* next = Q.front();  
-		Q.pop();
-		current = next;
-		setcontext(current->cntxt);// without saving 'previous' context
-		return 0;
-		}
 	if(current->finished && Q.empty()) // after all threads we get here
 		{
 		cout << "fin" << endl;
@@ -82,7 +68,10 @@ int thread_yield()
 		return 0;
 		}
 	Q.push(current); // when current thread didn't end work, push it to q and call previous
-	swapcontext(current->cntxt, previous->cntxt);//saving current context
+	Thread * tmp = current; // tmp for remembering old thread
+	current = Q.front();
+	Q.pop();
+	swapcontext(tmp->cntxt, current->cntxt);//saving current context
 	return 0;
 	}
 /*
