@@ -10,9 +10,10 @@ using namespace std;
 
 struct Thread
 {
-	ucontext_t * cntxt;
+	ucontext_t *cntxt;
 	bool finished;
 	unsigned int semID;
+	unsigned int mutID;
 };
 
 struct Semaphore
@@ -21,9 +22,16 @@ struct Semaphore
     int semValue;
 };
 
+struct Mutex
+{
+	int mutID;
+	Thread *blockingThread;
+};
+
 deque <Thread*> activeThreads;				// active threads
 deque <Thread*> blockedThreads;				// blocked threads (caused by semaphores)
 map<unsigned int, Semaphore*> semMap;		// semaphores
+map<unsigned int, Mutex*> mutMap;			// mutexes
 
 Thread *head;								// main thread, added to q at the end
 Thread *current;							// pointer to currently running thread
@@ -38,9 +46,11 @@ int start(thread_startfunc_t func, void *arg)
 	return thread_yield();		// go back and run another thread
 }
 
-Thread *new_thread(Thread *t, thread_startfunc_t func, void *arg) // return new Thread with initialized all properties (stack, context, etc)
+Thread *new_thread(Thread *t, thread_startfunc_t func, void *arg) // return new Thread with all properties initialized (stack, context, etc.)
 {
 	t->finished = false;
+	t->semID = 9999; // non-usable semID
+	t->mutID = 9999; // non-usable mutID
 	t->cntxt = new ucontext_t;
 	getcontext(t->cntxt);
 	t->cntxt->uc_stack.ss_sp = new char[STACK_SIZE];
@@ -67,9 +77,9 @@ extern int thread_create(thread_startfunc_t func, void *arg)
 
 extern int thread_yield()
 {
-	if (!initialized) // initializing and setting up q of threads
+	if (!initialized) // initializing and setting up activeThreads
 	{ 
-		initialized=true; // only once
+		initialized = true; // only once
 		activeThreads.push_back(head);
 		current = activeThreads.front();
 		activeThreads.pop_front();
@@ -91,17 +101,18 @@ extern int thread_yield()
 		return 0;
 	}
 
-	activeThreads.push_back(current);							// when current thread didn't end work, push it to q and call previous
-	Thread *tmp = current;						// tmp for remembering old thread
-	current = activeThreads.front();
-	activeThreads.pop_front();
-	swapcontext(tmp->cntxt, current->cntxt);	//saving current context
+	activeThreads.push_back(current);			// when current thread didn't end work, push it to activeThreads
+	Thread *tmp = current;						// tmp for remembering current thread
+	current = activeThreads.front();			// make first thread from activeThreads a current one
+	activeThreads.pop_front();					// remove that thread from queue
+	swapcontext(tmp->cntxt, current->cntxt);	// swap context between old and new threads' context
+
 	return 0;
 }
 
 extern int thread_seminit(unsigned int sem, unsigned int value)
 {
-    if (semMap.find(sem) != semMap.end()) // if semaphore isn't already initialized
+    if (semMap.find(sem) == semMap.end()) // if semaphore isn't already initialized
     {
         Semaphore *currentSemaphore;
         currentSemaphore->semID = sem;
@@ -115,41 +126,80 @@ extern int thread_seminit(unsigned int sem, unsigned int value)
     return -1;
 }
 
+extern int thread_semdown(unsigned int sem)
+{
+	if (semMap.find(sem) != semMap.end()) // if semaphore is already initialized
+    {
+		if (semMap.at(sem)->semValue > 0) // if semaphore is still open
+		{
+			(semMap.at(sem)->semValue)--;
+		}
+		else if (semMap.at(sem)->semValue == 0) 		// if semaphore is closed
+    	{
+			current->semID = sem;						// assign semID to current thread
+            blockedThreads.push_back(current);			// move the current thread to blockedThreads
+
+        	deque<Thread*>::iterator it = activeThreads.begin();
+        	while (it != activeThreads.end()) // iterate through activeThreads (move all activeThreads with the same semID to blockedThreads)
+        	{
+            	if ((*it)->semID == sem) // if thread from activeThreads has the same semID
+            	{
+                	blockedThreads.push_back(*it);	// add that thread to blockedThreads
+                	it = activeThreads.erase(it);	// remove that thread from activeThreads
+            	}
+            	else // if not then continue iterating
+            	{
+                	++it;
+            	}
+        	}
+
+        	Thread *tmp = current;						// tmp for remembering current thread
+			current = activeThreads.front();			// make first thread from activeThreads a current one
+			activeThreads.pop_front();					// remove that thread from queue
+			swapcontext(tmp->cntxt, current->cntxt);	// swap context between old and new threads' context
+    	}
+
+    	return 0;
+	}
+
+    return -1;
+}
+
 extern int thread_semup(unsigned int sem)
 {
-	if (semMap.find(sem) != semMap.end()) // if semaphore isn't already initialized
+	if (semMap.find(sem) != semMap.end()) // if semaphore is already initialized
     {
-    	if ((semMap.at(sem)->semValue) == 0)
+		if (semMap.at(sem)->semValue > 0) // if semaphore wasn't closed
+		{
+			(semMap.at(sem)->semValue)++;
+		}
+    	else if (semMap.at(sem)->semValue == 0) // if semaphore was closed
     	{
-        	int count = 0;
-	        //iterate thorugh blockedThreads, and transfer all threads with semID=sem to activeThreads
+        	bool found = false;
 
 	        deque<Thread*>::iterator it = blockedThreads.begin();
-	        while (it != blockedThreads.end())
+	        while (it != blockedThreads.end()) // iterate through blockedThreads (move the FIRST FOUND thread from blockedThreads with the same semID to activeThreads)
 	        {
-            	if (((*it)->semID) == sem)
+            	if ((*it)->semID == sem) // if thread from blockedThreads has the same semID
             	{
-	                count++;
-	                (*it)->semID = 9917; //Random Number
-	                activeThreads.push_back(*it);
-	                it = blockedThreads.erase(it);
-                	break;
+	                found = true;					// thread found
+	                (*it)->semID = 9999;			// assign a start-position semID
+
+	                activeThreads.push_back(*it);	// add that thread to activeThreads
+	                it = blockedThreads.erase(it);	// remove that thread from blockedThreads
+                	break;							// thread found, end of the loop
             	}
-            	else
+            	else // if not then continue iterating
             	{
                 	++it;
 				}  
         	}
         	
-        	if (count==0)
+        	if (!found) // if no thread with the same semID was found
         	{
             	(semMap.at(sem)->semValue)++;
         	}
-    	}    
-    	else
-    	{
-        	(semMap.at(sem)->semValue)++;
-		}
+    	}
 
 		return 0;
     }
@@ -157,41 +207,94 @@ extern int thread_semup(unsigned int sem)
     return -1;
 }
 
-extern int dthreads_semdown(unsigned int sem)
+extern int thread_mutinit(unsigned int mut)
 {
-	if (semMap.find(sem) != semMap.end()) // if semaphore isn't already initialized
+	if (mutMap.find(mut) == mutMap.end()) // if mutex isn't already initialized
     {
-		if ((semMap.at(sem)->semValue) >= 0)
+        Mutex *currentMutex;
+        currentMutex->mutID = mut;
+    	currentMutex->blockingThread = NULL;
+
+		mutMap.insert(make_pair(currentMutex->mutID, currentMutex));
+
+		return 0;
+    }
+
+    return -1;
+}
+
+extern int thread_mutdown(unsigned int mut)
+{
+	if (mutMap.find(mut) != mutMap.end()) // if mutex is already initialized
+    {
+		if (mutMap.at(mut)->blockingThread == NULL) // if mutex isn't set
 		{
-        	if (semMap.at(sem)->semValue == 0)
-        	{
-            	deque<Thread*>::iterator it = activeThreads.begin();
+			mutMap.at(mut)->blockingThread = current;
+		}
+		else // if mutex is set
+    	{
+			current->mutID = mut;						// assign mutID to current thread
+            blockedThreads.push_back(current);			// move the current thread to blockedThreads
 
-            	while (it != activeThreads.end())
+        	deque<Thread*>::iterator it = activeThreads.begin();
+        	while (it != activeThreads.end()) // iterate through activeThreads (move all activeThreads with the same mutID to blockedThreads)
+        	{
+            	if ((*it)->mutID == mut) // if thread from activeThreads has the same mutID
             	{
-                	if ((*it)->semID == sem)
-                	{
-                    	(*it)->semID = sem;
-                    	blockedThreads.push_back(*it);
-                    	it = activeThreads.erase(it); 
-                	}
-                	else
-                	{
-                    	++it;
-                	}
+                	blockedThreads.push_back(*it);	// add that thread to blockedThreads
+                	it = activeThreads.erase(it);	// remove that thread from activeThreads
             	}
-
-	            current->semID = sem;
-	            blockedThreads.push_back(current);
+            	else // if not then continue iterating
+            	{
+                	++it;
+            	}
         	}
-        	else
-        	{
-            	(semMap.at(sem)->semValue)--;
-			}
 
-    		return 0;
+        	Thread *tmp = current;						// tmp for remembering current thread
+			current = activeThreads.front();			// make first thread from activeThreads a current one
+			activeThreads.pop_front();					// remove that thread from queue
+			swapcontext(tmp->cntxt, current->cntxt);	// swap context between old and new threads' context
     	}
+
+    	return 0;
 	}
+
+    return -1;
+}
+
+extern int thread_mutup(unsigned int mut)
+{
+	if (mutMap.find(mut) != mutMap.end()) // if mutex is already initialized
+    {
+    	if (mutMap.at(mut)->blockingThread == current) // if the current thread is the one that blocked the mutex
+    	{
+    		mutMap.at(mut)->blockingThread = NULL;
+
+
+	        deque<Thread*>::iterator it = blockedThreads.begin();
+	        while (it != blockedThreads.end()) // iterate through blockedThreads (move the FIRST FOUND thread from blockedThreads with the same mutID to activeThreads)
+	        {
+	        	if ((*it)->mutID == mut) // if thread from blockedThreads has the same mutID
+	        	{
+	                (*it)->mutID = 9999;			// assign a start-position mutID
+
+	                activeThreads.push_back(*it);	// add that thread to activeThreads
+	                it = blockedThreads.erase(it);	// remove that thread from blockedThreads
+	            	break;							// thread found, end of the loop
+	        	}
+	        	else // if not then continue iterating
+	        	{
+	            	++it;
+				}  
+	    	}
+	    }
+	    else
+	    {
+	    	// if thread that didn't set the mutex wants to reset it, then you probably doing something wrong...
+	    }
+
+		return 0;
+    }
 
     return -1;
 }

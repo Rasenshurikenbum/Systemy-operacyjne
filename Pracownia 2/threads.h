@@ -19,15 +19,12 @@ extern int thread_create(thread_startfunc_t func, void *arg);
 extern int thread_yield();
 
 extern int thread_seminit(unsigned int sem, unsigned int value);
-/* thread_semup: takes the identifier for an initialized semaphore and
- * increments its value */
-extern int thread_semup(unsigned int sem);
-/* thread_semdown: takes the identifier for an initialized semaphore
- * and returns after the semaphore's value has been decremented by
- * the calling thread; a semaphore's value can only be decremented if
- * its value if it is greater than 0; returns 0 on success or -1 for
- * an error */ 
 extern int thread_semdown(unsigned int sem);
+extern int thread_semup(unsigned int sem);
+
+extern int thread_mutinit(unsigned int mut);
+extern int thread_mutdown(unsigned int mut);
+extern int thread_mutup(unsigned int mut);
 
 /*
  * start_preemptions() can be used in testing to configure the generation
