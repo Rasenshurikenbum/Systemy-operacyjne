@@ -22,9 +22,8 @@ extern int thread_seminit(unsigned int sem, unsigned int value);
 extern int thread_semdown(unsigned int sem);
 extern int thread_semup(unsigned int sem);
 
-extern int thread_mutinit(unsigned int mut);
-extern int thread_mutdown(unsigned int mut);
-extern int thread_mutup(unsigned int mut);
+extern int thread_lock(unsigned int mut);
+extern int thread_unlock(unsigned int mut);
 
 /*
  * start_preemptions() can be used in testing to configure the generation
