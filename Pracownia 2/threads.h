@@ -1,6 +1,3 @@
-#include <iostream>
-#include <ucontext.h>
-using namespace std;
 /*
  * thread.h -- public interface to thread library
  *
